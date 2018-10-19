@@ -84,9 +84,10 @@ for idx, anno in enumerate(annos):
         ymax = int(dets[i][3])
         score = dets[i][4]
         #det_list.append([xmin, ymin, xmax, ymax])
-        face_bbox = np.atleast_2d( np.asarray([1, xmin, ymin, xmax, ymax]) ) # [CLASS = 1, DETS] # face
-        np.savetxt(f, face_bbox, fmt=["%d",]*5 , delimiter=" ")
-        #cv2.rectangle(image, (int(xmin),int(ymin)), (int(xmax),int(ymax)), (0, 255, 0), 1)
+        if score >= args.confidence:
+            face_bbox = np.atleast_2d( np.asarray([1, xmin, ymin, xmax, ymax]) ) # [CLASS = 1, DETS] # face
+            np.savetxt(f, face_bbox, fmt=["%d",]*5 , delimiter=" ")
+            #cv2.rectangle(image, (int(xmin),int(ymin)), (int(xmax),int(ymax)), (0, 255, 0), 1)
 
         #if score > args.confidence:
         #padding = 25

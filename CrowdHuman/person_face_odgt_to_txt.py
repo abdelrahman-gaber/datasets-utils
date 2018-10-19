@@ -27,6 +27,10 @@ with open(args.odgt_file) as ff:
         # read images
         image_path = args.images_dir + "/" + j_content['ID'] + '.jpg';
         image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        height, width, _ = image.shape
+        if width > 2500 or height > 2500:
+            print("image skipped")
+            continue
         print (image_path)
         out_file = args.out_directory + "/" + j_content['ID'] + '.txt'
         f = open(out_file, 'w')
@@ -105,11 +109,12 @@ with open(args.odgt_file) as ff:
                 ymin = int(dets[i][1])
                 xmax = int(dets[i][2])
                 ymax = int(dets[i][3])
-                #score = dets[i][4]
+                score = dets[i][4]
                 #if args.mode == "faces_only" or  args.mode == "faces_and_person":
-                face_bbox = np.atleast_2d( np.asarray([1, xmin, ymin, xmax, ymax]) ) # [CLASS = 1, DETS] # face
-                np.savetxt(f, face_bbox, fmt=["%d",]*5 , delimiter=" ")
-                #cv2.rectangle(image, (int(xmin),int(ymin)), (int(xmax),int(ymax)), (0, 0, 255), 1)
+                if score >= args.confidence:
+                    face_bbox = np.atleast_2d( np.asarray([1, xmin, ymin, xmax, ymax]) ) # [CLASS = 1, DETS] # face
+                    np.savetxt(f, face_bbox, fmt=["%d",]*5 , delimiter=" ")
+                    #cv2.rectangle(image, (int(xmin),int(ymin)), (int(xmax),int(ymax)), (0, 0, 255), 1)
   
         #cv2.imshow("img", image)
         #cv2.waitKey(0)
