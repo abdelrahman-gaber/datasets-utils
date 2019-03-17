@@ -16,6 +16,8 @@ import torchvision.transforms as transforms
 from torch.autograd import Variable
 import scipy.io as sio
 
+print(torch.__version__)
+
 from PIL import Image, ImageDraw
 from pyramid import build_sfd
 from layers import *
@@ -86,6 +88,7 @@ def detect_face(image, shrink, confidence):
     x = Variable(x.cuda(), volatile=True)
 
     net.priorbox = PriorBoxLayer(width,height)
+    net.cuda()
     y = net(x)
     detections = y.data
     scale = torch.Tensor([width, height, width, height])

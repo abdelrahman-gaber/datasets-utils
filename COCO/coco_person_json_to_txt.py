@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--images_dir', default='/media/sdf/COCO/2014/images/val2014')
 parser.add_argument('--json_dir', default='/media/sdf/COCO/2014/Annotations/val2014')
 parser.add_argument('--out_dir', default='/media/sdf/COCO/2014/Annotations_person')
-#parser.add_argument('--mode', default='faces_and_person')
+parser.add_argument('--mode', default='faces_and_person', help='posiible choices: person_only, faces_only, faces_and_person ')
 parser.add_argument('--confidence', type=float, default=0.5)
 
 args = parser.parse_args()
@@ -22,6 +22,10 @@ args = parser.parse_args()
 #images_input_folder = "/media/sdf/COCO/2014/images/val2014"
 #json_input_folder = "/media/sdf/COCO/2014/Annotations/val2014"
 #output_folder = "/media/sdf/COCO/2014/Annotations_person"
+
+Person_ID = 2
+if args.mode == "person_only":
+    Person_ID = 1
 
 for files in scandir(args.json_dir):
     person_exists = False
@@ -31,7 +35,7 @@ for files in scandir(args.json_dir):
         out_file = args.out_dir + "/" + os.path.splitext(files.name)[0] + ".txt"
         #print(out_file)
         image_path = args.images_dir + "/" + os.path.splitext(files.name)[0] + ".jpg";
-        image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        #image = cv2.imread(image_path, cv2.IMREAD_COLOR)
 
         #f = open(out_file, 'w')
         annos = json.load(open(json_file, 'r'))
@@ -45,19 +49,21 @@ for files in scandir(args.json_dir):
             if category_id == 1 and is_crowd != 1:
                 #print(json_file)
                 person_exists = True
-                f = open(out_file, 'a')
-                bbox = obj["bbox"]
-                #print(bbox)
-                P_xmin = bbox[0]
-                P_ymin = bbox[1] 
-                P_xmax = bbox[2] + bbox[0]
-                P_ymax = bbox[3] + bbox[1] 
-                person_bbox = np.atleast_2d( np.asarray([2, P_xmin, P_ymin, P_xmax, P_ymax]) ) # [CLASS = 2, DETS]
-                np.savetxt(f, person_bbox, fmt=["%d",]*5 , delimiter=" ")
-                #cv2.rectangle(image, (int(P_xmin),int(P_ymin)), (int(P_xmax),int(P_ymax)), (0, 255, 0), 1)
-                f.close()
+                if args.mode != "faces_only":
+                    f = open(out_file, 'a')
+                    bbox = obj["bbox"]
+                    #print(bbox)
+                    P_xmin = bbox[0]
+                    P_ymin = bbox[1] 
+                    P_xmax = bbox[2] + bbox[0]
+                    P_ymax = bbox[3] + bbox[1] 
+                    person_bbox = np.atleast_2d( np.asarray([Person_ID, P_xmin, P_ymin, P_xmax, P_ymax]) ) # [CLASS = 2, DETS]
+                    np.savetxt(f, person_bbox, fmt=["%d",]*5 , delimiter=" ")
+                    #cv2.rectangle(image, (int(P_xmin),int(P_ymin)), (int(P_xmax),int(P_ymax)), (0, 255, 0), 1)
+                    f.close()
     
-        if person_exists == True:
+        if person_exists == True and (args.mode == "faces_only" or  args.mode == "faces_and_person"):
+            image = cv2.imread(image_path, cv2.IMREAD_COLOR)
             # face det
             max_im_shrink = (0x7fffffff / 200.0 / (image.shape[0] * image.shape[1])) ** 0.4 # the max size of input image for caffe
             max_im_shrink = 3 if max_im_shrink > 3 else max_im_shrink

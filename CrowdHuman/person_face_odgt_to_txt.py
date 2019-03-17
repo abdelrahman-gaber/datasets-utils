@@ -25,12 +25,13 @@ with open(args.odgt_file) as ff:
         j_content = json.loads(line)
         #print(j_content["ID"])
         # read images
-        image_path = args.images_dir + "/" + j_content['ID'] + '.jpg';
-        image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-        height, width, _ = image.shape
-        if width > 2500 or height > 2500:
-            print("image skipped")
-            continue
+        image_path = args.images_dir + "/" + j_content['ID'] + '.jpg'
+        if args.mode == "faces_only" or  args.mode == "faces_and_person":
+            image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+            height, width, _ = image.shape
+            if width > 2500 or height > 2500:
+                print("image skipped")
+                continue
         print (image_path)
         out_file = args.out_directory + "/" + j_content['ID'] + '.txt'
         f = open(out_file, 'w')

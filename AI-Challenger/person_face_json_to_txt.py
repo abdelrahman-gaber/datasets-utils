@@ -22,8 +22,14 @@ parser.add_argument('--out_dir', default='annotations')
 parser.add_argument('--image_dir', default='keypoint_test_a_images_20180103')
 parser.add_argument('--json_file', default='keypoint_test_a_annotations_20180103.json')
 parser.add_argument('--confidence', type=float, default=0.5)
+parser.add_argument('--mode', default='face_and_person')
 
 args = parser.parse_args()
+
+
+PERSON_ID = 2
+if args.mode == 'person_only':
+    PERSON_ID = 1
 
 # set variable paths to images and json file
 image_dir = os.path.join(args.data_dir, args.image_dir)
@@ -41,53 +47,57 @@ for idx, anno in enumerate(annos):
         print(str(idx + 1) + ' / ' + str(len(annos)) + "test")
 
     # read images
-    image_path = image_dir + "/" + anno['image_id'] + '.jpg';
-    image = cv2.imread(image_dir + "/" + anno['image_id'] + '.jpg', cv2.IMREAD_COLOR)
-    print (image_path)
+    image_path = image_dir + "/" + anno['image_id'] + '.jpg'
     out_file = target_annotation_dir + "/" + anno['image_id'] + '.txt'
     f = open(out_file, 'w')
 
-    max_im_shrink = (0x7fffffff / 200.0 / (image.shape[0] * image.shape[1])) ** 0.4 # the max size of input image for caffe
-    max_im_shrink = 3 if max_im_shrink > 3 else max_im_shrink
-    shrink = max_im_shrink if max_im_shrink < 1 else 1
-        
-    # start detection
-    det0 = detect_face(image, shrink, args.confidence)  # origin test
-    det1 = flip_test(image, shrink, args.confidence)    # flip test
-    [det2, det3] = multi_scale_test(image, max_im_shrink, args.confidence) #min(2,1400/min(image.shape[0],image.shape[1])))  #multi-scale test
-    det4 = multi_scale_test_pyramid(image, max_im_shrink, args.confidence)
-    det = np.row_stack((det0, det1, det2, det3, det4))
-    dets = bbox_vote(det)
-
-    # read keypoints from json
-    #Keypoints_list = []
-    #keypoints_all = anno['keypoint_annotations']
-    #print(keypoints_all)
-    #for key, value in keypoints_all.iteritems():
-        #print(value)
-        #Keypoints_list.append(value[36:])  # last 6 elements contain head and neck info
-        #print(Keypoints_list )
-        #print(Keypoints_list[0][1])
-
-    person_bbox_list = []
-    person_bbox_all = anno['human_annotations']
-    for key, bbox in person_bbox_all.iteritems():
-        person_bbox_list.append(bbox)
+    if args.mode == 'person_only' or args.mode == 'face_and_person':
+        person_bbox_list = []
+        person_bbox_all = anno['human_annotations']
+        for key, bbox in person_bbox_all.iteritems():
+            person_bbox_list.append(bbox)
     
-    #count = 0
-    height, width, channels = image.shape
-    det_list = []
-    for i in range(dets.shape[0]):
-        xmin = int(dets[i][0])
-        ymin = int(dets[i][1])
-        xmax = int(dets[i][2])
-        ymax = int(dets[i][3])
-        score = dets[i][4]
-        #det_list.append([xmin, ymin, xmax, ymax])
-        if score >= args.confidence:
-            face_bbox = np.atleast_2d( np.asarray([1, xmin, ymin, xmax, ymax]) ) # [CLASS = 1, DETS] # face
-            np.savetxt(f, face_bbox, fmt=["%d",]*5 , delimiter=" ")
-            #cv2.rectangle(image, (int(xmin),int(ymin)), (int(xmax),int(ymax)), (0, 255, 0), 1)
+        for idx, person in enumerate(person_bbox_list):
+            P_xmin = person[0]
+            P_ymin = person[1]
+            P_xmax = person[2]
+            P_ymax = person[3]
+            person_bbox = np.atleast_2d( np.asarray([PERSON_ID, P_xmin, P_ymin, P_xmax, P_ymax]) ) # [CLASS = 2, DETS] # person
+            np.savetxt(f, person_bbox, fmt=["%d",]*5 , delimiter=" ")
+
+    if args.mode == 'face_only' or args.mode == 'face_and_person':
+        image = cv2.imread(image_dir + "/" + anno['image_id'] + '.jpg', cv2.IMREAD_COLOR)
+        print (image_path)
+
+        max_im_shrink = (0x7fffffff / 200.0 / (image.shape[0] * image.shape[1])) ** 0.4 # the max size of input image for caffe
+        max_im_shrink = 3 if max_im_shrink > 3 else max_im_shrink
+        shrink = max_im_shrink if max_im_shrink < 1 else 1
+        
+        # start detection
+        det0 = detect_face(image, shrink, args.confidence)  # origin test
+        det1 = flip_test(image, shrink, args.confidence)    # flip test
+        [det2, det3] = multi_scale_test(image, max_im_shrink, args.confidence) #min(2,1400/min(image.shape[0],image.shape[1])))  #multi-scale test
+        det4 = multi_scale_test_pyramid(image, max_im_shrink, args.confidence)
+        det = np.row_stack((det0, det1, det2, det3, det4))
+        dets = bbox_vote(det)
+
+        #count = 0
+        height, width, channels = image.shape
+        det_list = []
+        for i in range(dets.shape[0]):
+            xmin = int(dets[i][0])
+            ymin = int(dets[i][1])
+            xmax = int(dets[i][2])
+            ymax = int(dets[i][3])
+            score = dets[i][4]
+            #det_list.append([xmin, ymin, xmax, ymax])
+            if score >= args.confidence:
+                face_bbox = np.atleast_2d( np.asarray([1, xmin, ymin, xmax, ymax]) ) # [CLASS = 1, DETS] # face
+                np.savetxt(f, face_bbox, fmt=["%d",]*5 , delimiter=" ")
+                #cv2.rectangle(image, (int(xmin),int(ymin)), (int(xmax),int(ymax)), (0, 255, 0), 1)
+
+
+
 
         #if score > args.confidence:
         #padding = 25
@@ -118,13 +128,13 @@ for idx, anno in enumerate(annos):
                 #cv2.circle(image,(human[3],human[4]), 3, (0,0,255), -1)
                 #del Keypoints_list[idx]
     
-    for idx, person in enumerate(person_bbox_list):
-        P_xmin = person[0]
-        P_ymin = person[1]
-        P_xmax = person[2]
-        P_ymax = person[3]
-        person_bbox = np.atleast_2d( np.asarray([2, P_xmin, P_ymin, P_xmax, P_ymax]) ) # [CLASS = 2, DETS] # person
-        np.savetxt(f, person_bbox, fmt=["%d",]*5 , delimiter=" ")
+    #for idx, person in enumerate(person_bbox_list):
+    #    P_xmin = person[0]
+    #    P_ymin = person[1]
+    #    P_xmax = person[2]
+    #    P_ymax = person[3]
+    #    person_bbox = np.atleast_2d( np.asarray([2, P_xmin, P_ymin, P_xmax, P_ymax]) ) # [CLASS = 2, DETS] # person
+    #    np.savetxt(f, person_bbox, fmt=["%d",]*5 , delimiter=" ")
         #cv2.rectangle(image, (int(P_xmin),int(P_ymin)), (int(P_xmax),int(P_ymax)), (0, 0, 255), 1)
 
     #cv2.imshow("img", image)
